@@ -1,55 +1,75 @@
-// Login Authentication
-function login(e) {
-    e.preventDefault();
-    let user = document.getElementById("username").value;
-    let pass = document.getElementById("password").value;
+let currentUser = "";
 
-    if (user === "admin" && pass === "admin123") {
-        window.location.href = "dashboard.html";
-    } else {
-        alert("Invalid Username or Password");
-    }
+function register() {
+  currentUser = username.value;
+  fetch("/register", {
+    method:"POST",
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name:currentUser})
+  });
+  loadPosts();
 }
 
-// Employee CRUD
-let empForm = document.getElementById("empForm");
-let empTable = document.getElementById("empTable");
-
-if (empForm) {
-    empForm.addEventListener("submit", function (e) {
-        e.preventDefault();
-
-        let name = document.getElementById("empName").value;
-        let email = document.getElementById("empEmail").value;
-        let age = document.getElementById("empAge").value;
-
-        if (age <= 0) {
-            alert("Enter valid age");
-            return;
-        }
-
-        let row = empTable.insertRow();
-        row.innerHTML = `
-            <td>${name}</td>
-            <td>${email}</td>
-            <td>${age}</td>
-            <td>
-                <button onclick="editRow(this)">Edit</button>
-                <button onclick="deleteRow(this)">Delete</button>
-            </td>
-        `;
-        empForm.reset();
-    });
+function createPost() {
+  fetch("/post", {
+    method:"POST",
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      user: currentUser,
+      text: postText.value,
+      image: imgUrl.value
+    })
+  }).then(loadPosts);
 }
 
-function deleteRow(btn) {
-    btn.parentElement.parentElement.remove();
+function like(id) {
+  fetch("/like/"+id, {
+    method:"POST",
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({user:currentUser})
+  }).then(loadPosts);
 }
 
-function editRow(btn) {
-    let row = btn.parentElement.parentElement;
-    document.getElementById("empName").value = row.cells[0].innerText;
-    document.getElementById("empEmail").value = row.cells[1].innerText;
-    document.getElementById("empAge").value = row.cells[2].innerText;
-    row.remove();
+function comment(id) {
+  const c = prompt("Comment:");
+  fetch("/comment/"+id,{
+    method:"POST",
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({comment:c})
+  }).then(loadPosts);
 }
+
+function loadPosts() {
+  fetch("/posts")
+    .then(r=>r.json())
+    .then(showPosts);
+
+  fetch("/trending")
+    .then(r=>r.json())
+    .then(showTrending);
+}
+
+function showPosts(list) {
+  feed.innerHTML="";
+  list.forEach(p=>{
+    feed.innerHTML += `
+      <div class="post">
+        <b>${p.user}</b>
+        <p>${p.text}</p>
+        ${p.image ? `<img src="${p.image}">` : ""}
+        <p>❤️ ${p.likes}</p>
+        <button onclick="like(${p.id})">Like</button>
+        <button onclick="comment(${p.id})">Comment</button>
+        <div>${p.comments.map(c=>"<small>"+c+"</small>").join("<br>")}</div>
+      </div>`;
+  });
+}
+
+function showTrending(list){
+  trending.innerHTML="";
+  list.forEach(p=>{
+    trending.innerHTML += `<div class="post">${p.text} ❤️${p.likes}</div>`;
+  });
+}
+
+loadPosts();
